@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.DS_Store
+outputs/
+*.log
+*.hex
+*.elf
+*.bin
+private_data/
+secrets.h
