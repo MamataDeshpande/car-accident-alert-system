@@ -38,7 +38,7 @@ flowchart LR
 
 ## Run the Python simulator
 
-Requires Python 3.10+. No external Python dependencies needed.
+Requires Python 3.10+.
 
 ```bash
 python -m unittest discover -s tests -v
@@ -52,18 +52,11 @@ All location values are fictional, and the mock message explicitly says no emerg
 
 Open `arduino/CarAccidentAlert/CarAccidentAlert.ino` with Arduino IDE, select an Arduino Uno-compatible board and install the `TinyGPSPlus` library. See the [hardware and safety guide](docs/HARDWARE_AND_SAFETY.md) before wiring components. Arduino code has not been proven on actual vehicle hardware.
 
-The demonstration uses analog accelerometer input, UART GPS parsing, LCD status messages and a manual cancel switch. The numerical sensor threshold is **illustrative, not calibrated for real collisions**. The optional GSM block must not be used to contact emergency services or third parties.
+The demonstration uses analog accelerometer input, UART GPS parsing, LCD status messages and a manual cancel switch. The numerical sensor threshold is **illustrative, not calibrated for real collisions**. 
 
-## Original research context
-
-This is a **team undergraduate project**, not an individual original project. The historical university report described GPS/GSM accident alerts, an ATmega328P, ADXL335, LCD and Proteus simulations. This repository does **not** redistribute the team's old source code, full report, personal details or photographs.
-
-See [Project Background](docs/PROJECT_BACKGROUND.md).
 
 ## Limitations
 
-This is a mock educational prototype. No production fault handling, certified crash sensing, electrical safety validation, end-to-end network delivery, real GPS/GSM system test, or road deployment has been performed. Do not install this in an actual vehicle.
+This is a mock educational prototype. No production fault handling, certified crash sensing, electrical safety validation, end-to-end network delivery, real GPS/GSM system test, or road deployment has been performed. Do not install this in an actual vehicle. It is a prototype.
 
-## License
 
-The **new educational source code** is MIT-licensed. The original academic materials are not distributed or relicensed.
