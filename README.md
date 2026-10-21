@@ -26,7 +26,7 @@ The projects code uses the **$GPRMC** sentence to extract GPS information. The t
 
 ## Source Code
 
-[Arduino program from Chapter 4.4](arduino/CarAccidentAlert/CarAccidentAlert.ino)
+[Arduino program](arduino/CarAccidentAlert/CarAccidentAlert.ino)
 
 
 This is the original **prototype design**, not a modern implementation or a certified accident detection system. The code has not been retested on current Arduino hardware or newer libraries.
