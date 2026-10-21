@@ -1,62 +1,48 @@
-# Car Accident Alert System — Arduino + GPS/GSM Educational Demo
+# Car Accident Alert System
 
-[![Python simulator tests](https://github.com/MamataDeshpande/car-accident-alert-system/actions/workflows/python-tests.yml/badge.svg)](https://github.com/MamataDeshpande/car-accident-alert-system/actions/workflows/python-tests.yml)
+**B.Tech. Electronics and Telecommunication Project (2017–2018)**  
+**Government College of Engineering, Karad**
 
-**A new, independently written reconstruction of an undergraduate team electronics project.**
+**Project members:** Mamata Shodhan Deshpande and Gouri Prakash Wayachal.
 
-> **NOT AN EMERGENCY DEVICE.** This is an educational demonstration, not a tested or certified automotive safety system. It does not reliably detect road accidents, and it must never be relied upon to contact emergency services. Real SMS is **disabled by default**.
+## Introduction
 
-## Project overview
+The Car Accident Alert System was developed to detect sudden changes in vehicle position and send the accident location through an SMS. It uses an Arduino (ATmega328P) with an accelerometer, GPS receiver, GSM modem, and 16×2 LCD.
 
-The original Car Accident Alert System project explored using an Arduino / ATmega328P with an ADXL335 accelerometer, GPS receiver, GSM modem and a 16×2 LCD to recognize a potential impact and communicate its location to a contact.
+The purpose is to inform a predefined contact about a possible accident and provide the vehicle's coordinates using a Google Maps link.
 
-This new portfolio example recreates the engineering ideas while adding safe mock alerts, a countdown with cancellation, fresh GPS validation, and Python tests.
+## Components
 
-## Architecture
-
-```mermaid
-flowchart LR
-  A[Accelerometer] --> B[Arduino ATmega328P]
-  C[GPS receiver] --> B
-  D[Cancel button] --> B
-  B --> E[16x2 LCD]
-  B --> F[Mock alert via Serial]
-  F -. optional authorized lab test .-> G[GSM module]
-```
-
-## Contents
-
-| Path | Function |
+| Component | Description |
 |---|---|
-| `arduino/CarAccidentAlert/CarAccidentAlert.ino` | Original Arduino demonstration sketch |
-| `arduino/CarAccidentAlert/config.h` | Explicitly disabled SMS and illustrative lab values |
-| `simulator/alert.py` | Hardware-free accelerometer, GPS/NMEA and mock alert example |
-| `tests/test_alert.py` | 12 simulation unit tests |
-| `examples/demo_trace.csv` | Artificial example measurement trace |
-| `docs/HARDWARE_AND_SAFETY.md` | Electrical cautions and limitations |
-| `.github/workflows/` | Python tests and Arduino build configurations |
+| Arduino / ATmega328P | Reads sensor signals and controls the overall system |
+| ADXL335 accelerometer | Detects sudden changes on X, Y and Z axes |
+| SIM28ML GPS module | Provides the location coordinates |
+| SIM900A GSM module | Sends an SMS with accident location |
+| 16×2 LCD | Displays status, latitude, longitude and speed |
 
-## Run the Python simulator
+## Methodology
 
-Requires Python 3.10+.
+The accelerometer readings are calibrated when the system starts. During monitoring, the Arduino compares current X, Y and Z values with the initial readings. When the difference exceeds the preset limits, the system reads GPS information and sends a message to the predefined number using GSM.
 
-```bash
-python -m unittest discover -s tests -v
-python -m simulator.alert --csv outputs/demo_trace.csv
-python -m simulator.alert --cancel --csv outputs/cancelled_trace.csv
-```
+The alert message contains latitude, longitude, speed in knots, and a Google Maps link.
 
-All location values are fictional, and the mock message explicitly says no emergency service was notified.
+The report's code uses the **$GPRMC** sentence to extract GPS information. The text of the methodology also discusses GPS data in **$GPGGA** format. Both descriptions have been preserved as part of the original report rather than replaced with a new GPS library.
 
-## Arduino example
+## Source Code
 
-Open `arduino/CarAccidentAlert/CarAccidentAlert.ino` with Arduino IDE, select an Arduino Uno-compatible board and install the `TinyGPSPlus` library. See the [hardware and safety guide](docs/HARDWARE_AND_SAFETY.md) before wiring components. Arduino code has not been proven on actual vehicle hardware.
+[Arduino program from Chapter 4.4](arduino/CarAccidentAlert/CarAccidentAlert.ino)
 
-The demonstration uses analog accelerometer input, UART GPS parsing, LCD status messages and a manual cancel switch. The numerical sensor threshold is **illustrative, not calibrated for real collisions**. 
+The source code was transcribed from the report, preserving the original variables, threshold constants, GSM AT commands and GPS parsing approach. Line wrapping caused by the printed PDF was normalized for a code file. The SMS number remains the report's original `XXXXXXXXXX` placeholder.
 
+This is the original **2017–2018 prototype design**, not a modern implementation or a certified accident detection system. The code has not been retested on current Arduino hardware or newer libraries.
 
-## Limitations
+## Results
 
-This is a mock educational prototype. No production fault handling, certified crash sensing, electrical safety validation, end-to-end network delivery, real GPS/GSM system test, or road deployment has been performed. Do not install this in an actual vehicle. It is a prototype.
+The report describes a **Proteus simulation** using virtual GPS and GSM terminals, as well as a hardware prototype where Arduino received position-sensor signals, displayed information on the LCD and sent an SMS with the location. The report also describes a ten-second LCD countdown in hardware; this countdown is **not present in the printed Chapter 4.4 code**.
 
+## Conclusion and Future Work
 
+The project investigated an embedded method to locate a vehicle after an accident and send an alert through GPS and GSM. Future work suggested in the report includes a sound sensor, alcohol detection, a camera and nearby hospital/traffic-route information.
+
+*The repository documents an academic prototype. It should not be relied upon for crash detection or emergency communication in a real vehicle.*

@@ -1,115 +1,279 @@
-/*
- * Original, independently authored educational reconstruction of an
- * undergraduate car-accident alert electronics project.
- * NOT a real-world emergency device. NEVER deploy in a road vehicle.
- * SMS DISABLED by default. Only use with your own consenting test recipient.
- */
-#include <Arduino.h>
-#include <SoftwareSerial.h>
-#include <LiquidCrystal.h>
-#include <TinyGPS++.h>
-#include "config.h"
-
-SoftwareSerial gpsSerial(10,11);
-SoftwareSerial gsmSerial(2,3);
+#include<SoftwareSerial.h>
+SoftwareSerial Serial1(2,3); //make RX arduino line is pin 2, make TX arduino line is pin 3.
+SoftwareSerial gps(10,11);
+#include<LiquidCrystal.h>
 LiquidCrystal lcd(4,5,6,7,8,9);
-TinyGPSPlus gps;
-const uint8_t ACCEL_X=A1, ACCEL_Y=A2, ACCEL_Z=A3;
-const uint8_t CANCEL_BUTTON=12, STATUS_LED=13;
-int referenceX=0, referenceY=0, referenceZ=0;
-uint8_t shockStreak=0;
-unsigned long lastSampleMs=0, triggeredAtMs=0, resetAtMs=0;
-enum State : uint8_t { MONITORING, COUNTDOWN, DONE, CANCELLED };
-State state=MONITORING;
-
-void showStatus(const __FlashStringHelper *a, const __FlashStringHelper *b) {
-  lcd.clear(); lcd.setCursor(0,0); lcd.print(a);
-  lcd.setCursor(0,1); lcd.print(b);
+#define x A1
+#define y A2
+#define z A3
+int xsample=0;
+int ysample=0;
+int zsample=0;
+#define samples 10
+#define minVal -50
+#define MaxVal 50
+int i=0,k=0;
+int gps_status=0;
+float latitude=0;
+float logitude=0;
+String Speed="";
+String gpsString="";
+char *test="$GPRMC";
+void initModule(String cmd, char *res, int t)
+{
+  while(1)
+  {
+    Serial.println(cmd);
+    Serial1.println(cmd);
+    delay(100);
+    while(Serial1.available()>0)
+    {
+      if(Serial1.find(res))
+      {
+       Serial.println(res);
+       delay(t);
+       return;
+      }
+          else
+          {
+           Serial.println("Error");
+          }
+        }
+        delay(t);
+    }
 }
-void calibrateReference() {
-  showStatus(F("Calibrating..."), F("Keep still"));
-  long x=0,y=0,z=0;
-  for(int i=0;i<30;i++) {x+=analogRead(ACCEL_X);y+=analogRead(ACCEL_Y);z+=analogRead(ACCEL_Z);delay(30);}
-  referenceX=x/30; referenceY=y/30; referenceZ=z/30;
-}
-bool candidateShock() {
-  int dx=abs(analogRead(ACCEL_X)-referenceX);
-  int dy=abs(analogRead(ACCEL_Y)-referenceY);
-  int dz=abs(analogRead(ACCEL_Z)-referenceZ);
-  bool exceeded=dx>ACCEL_ADC_DELTA || dy>ACCEL_ADC_DELTA || dz>ACCEL_ADC_DELTA;
-  if(exceeded) {if(shockStreak<REQUIRED_CONSECUTIVE_SAMPLES) ++shockStreak;}
-  else shockStreak=0;
-  return shockStreak>=REQUIRED_CONSECUTIVE_SAMPLES;
-}
-void emitLocation(Stream &out) {
-  if(gps.location.isValid() && gps.location.age()<=GPS_MAX_AGE_MS) {
-    out.print(F("Coordinates: "));out.print(gps.location.lat(),6);
-    out.print(F(", "));out.println(gps.location.lng(),6);
-    out.print(F("https://www.google.com/maps?q="));
-    out.print(gps.location.lat(),6);out.print(',');
-    out.println(gps.location.lng(),6);
-  } else out.println(F("GPS unavailable (no fresh fix)."));
-}
-void writeMessage(Stream &out) {
-  out.println(F("DEMO ONLY - possible incident (unverified)."));
-  out.println(F("No emergency service contacted."));
-  emitLocation(out);
-}
-void notifyMockOrTestSMS() {
-#if ENABLE_REAL_SMS
-  // LAB TEST ONLY. Confirmations and modem resilience not implemented.
-  gsmSerial.listen();
-  gsmSerial.println(F("AT"));delay(600);
-  gsmSerial.println(F("AT+CMGF=1"));delay(600);
-  gsmSerial.print(F("AT+CMGS=\""));
-  gsmSerial.print(F(SMS_RECIPIENT_NUMBER));
-  gsmSerial.println('"');delay(600);
-  writeMessage(gsmSerial);
-  gsmSerial.write((uint8_t)26);delay(2000);
-  gpsSerial.listen();
-  Serial.println(F("TEST SMS command sent; delivery NOT confirmed."));
-#else
-  Serial.println(F("[MOCK ONLY] No SMS was transmitted."));
-  writeMessage(Serial);
-#endif
-}
-void setup() {
+void setup()
+{
+  Serial1.begin(9600);
   Serial.begin(9600);
-  pinMode(CANCEL_BUTTON, INPUT_PULLUP);pinMode(STATUS_LED, OUTPUT);
   lcd.begin(16,2);
-  gpsSerial.begin(9600);gsmSerial.begin(9600);
-  gpsSerial.listen();
-  calibrateReference();
-  showStatus(F("Monitoring"), F("TEST MODE"));
-  Serial.println(F("Educational prototype only: SMS disabled by default."));
+  lcd.print("Accident Alert ");
+  lcd.setCursor(0,1);
+  lcd.print(" System ");
+  delay(2000);
+  lcd.clear();
+  lcd.print("Initializing");
+  lcd.setCursor(0,1);
+  lcd.print("Please Wait...");
+  delay(1000);
+
+  Serial.println("Initializing....");
+  initModule("AT","OK",1000);
+  initModule("ATE1","OK",1000);
+  initModule("AT+CPIN?","READY",1000);
+  initModule("AT+CMGF=1","OK",1000);
+  initModule("AT+CNMI=2,2,0,0,0","OK",1000);
+  Serial.println("Initialized Successfully");
+  lcd.clear();
+  lcd.print("Initialized");
+  lcd.setCursor(0,1);
+  lcd.print("Successfully");
+  delay(2000);
+  lcd.clear();
+  lcd.print("Callibrating ");
+  lcd.setCursor(0,1);
+  lcd.print("Acceleromiter");
+  for(int i=0;i<samples;i++)
+  {
+    xsample+=analogRead(x);
+    ysample+=analogRead(y);
+    zsample+=analogRead(z);
+  }
+  xsample/=samples;
+  ysample/=samples;
+  zsample/=samples;
+  Serial.println(xsample);
+  Serial.println(ysample);
+  Serial.println(zsample);
+  delay(1000);
+
+  lcd.clear();
+  lcd.print("Waiting For GPS");
+  lcd.setCursor(0,1);
+  lcd.print(" Signal ");
+  delay(2000);
+  gps.begin(9600);
+  get_gps();
+  show_coordinate();
+  delay(2000);
+  lcd.clear();
+  lcd.print("GPS is Ready");
+  delay(1000);
+  lcd.clear();
+  lcd.print("System Ready");
+  Serial.println("System Ready..");
 }
-void loop() {
-  while(gpsSerial.available()>0) gps.encode(gpsSerial.read());
-  unsigned long now=millis();
-  if(state==MONITORING && now-lastSampleMs>=SENSOR_PERIOD_MS) {
-    lastSampleMs=now;
-    if(candidateShock()) {
-      state=COUNTDOWN;triggeredAtMs=now;
-      digitalWrite(STATUS_LED,HIGH);
-      showStatus(F("Impact candidate"), F("Press D12 cancel"));
-      Serial.println(F("Impact candidate (NOT confirmed crash)."));
-    }
+void loop()
+{
+  int value1=analogRead(x);
+  int value2=analogRead(y);
+  int value3=analogRead(z);
+  int xValue=xsample-value1;
+  int yValue=ysample-value2;
+  int zValue=zsample-value3;
+
+  Serial.print("x=");
+  Serial.println(xValue);
+  Serial.print("y=");
+  Serial.println(yValue);
+  Serial.print("z=");
+  Serial.println(zValue);
+  if(xValue < minVal || xValue > MaxVal || yValue < minVal || yValue > MaxVal || zValue < minVal || zValue > MaxVal)
+  {
+    get_gps();
+    show_coordinate();
+    lcd.clear();
+    lcd.print("Sending SMS ");
+    Serial.println("Sending SMS");
+    Send();
+    Serial.println("SMS Sent");
+    delay(2000);
+    lcd.clear();
+    lcd.print("System Ready");
   }
-  if(state==COUNTDOWN) {
-    if(digitalRead(CANCEL_BUTTON)==LOW) {
-      state=CANCELLED;resetAtMs=now;
-      digitalWrite(STATUS_LED,LOW);
-      showStatus(F("Alert cancelled"), F("TEST MODE"));
-      Serial.println(F("Simulated alert cancelled."));
-    } else if(now-triggeredAtMs>=CANCEL_WINDOW_MS) {
-      state=DONE;resetAtMs=now;
-      showStatus(F("Mock alert"), F("Serial output"));
-      notifyMockOrTestSMS();
+}
+void gpsEvent()
+{
+  gpsString="";
+  while(1)
+  {
+    while (gps.available()>0) //Serial incoming data from GPS
+    {
+      char inChar = (char)gps.read();
+      gpsString+= inChar; //store incoming data from GPS to temparary string str[]
+      i++;
+      // Serial.print(inChar);
+      if (i < 7)
+      {
+        if(gpsString[i-1] != test[i-1]) //check for right string
+        {
+          i=0;
+          gpsString="";
+        }
+      }
+      if(inChar=='\r')
+      {
+        if(i>60)
+        {
+          gps_status=1;
+          break;
+        }
+        else
+        {
+          i=0;
+        }
+      }
     }
+    if(gps_status)
+      break;
   }
-  if((state==DONE || state==CANCELLED) && now-resetAtMs>=COOLDOWN_MS) {
-    state=MONITORING;shockStreak=0;
-    digitalWrite(STATUS_LED,LOW);gpsSerial.listen();
-    showStatus(F("Monitoring"), F("TEST MODE"));
+}
+void get_gps()
+{
+  lcd.clear();
+  lcd.print("Getting GPS Data");
+  lcd.setCursor(0,1);
+  lcd.print("Please Wait.....");
+  gps_status=0;
+  int x=0;
+  while(gps_status==0)
+  {
+    gpsEvent();
+    int str_lenth=i;
+    coordinate2dec();
+    i=0;x=0;
+    str_lenth=0;
+  }
+}
+void show_coordinate()
+{
+  lcd.clear();
+  lcd.print("Lat:");
+  lcd.print(latitude);
+  lcd.setCursor(0,1);
+  lcd.print("Log:");
+  lcd.print(logitude);
+  Serial.print("Latitude:");
+  Serial.println(latitude);
+  Serial.print("Longitude:");
+  Serial.println(logitude);
+  Serial.print("Speed(in knots)=");
+  Serial.println(Speed);
+  delay(2000);
+  lcd.clear();
+  lcd.print("Speed(Knots):");
+  lcd.setCursor(0,1);
+  lcd.print(Speed);
+}
+void coordinate2dec()
+{
+  String lat_degree="";
+  for(i=20;i<=21;i++)
+    lat_degree+=gpsString[i];
+
+  String lat_minut="";
+  for(i=22;i<=28;i++)
+    lat_minut+=gpsString[i];
+  String log_degree="";
+  for(i=32;i<=34;i++)
+    log_degree+=gpsString[i];
+  String log_minut="";
+  for(i=35;i<=41;i++)
+    log_minut+=gpsString[i];
+
+  Speed="";
+  for(i=45;i<48;i++) //extract longitude from string
+    Speed+=gpsString[i];
+
+  float minut= lat_minut.toFloat();
+  minut=minut/60;
+  float degree=lat_degree.toFloat();
+  latitude=degree+minut;
+
+  minut= log_minut.toFloat();
+  minut=minut/60;
+  degree=log_degree.toFloat();
+  logitude=degree+minut;
+}
+void Send()
+{
+  Serial1.println("AT");
+  delay(500);
+  serialPrint();
+  Serial1.println("AT+CMGF=1");
+  delay(500);
+  serialPrint();
+  Serial1.print("AT+CMGS=");
+  Serial1.print('"');
+  Serial1.print("XXXXXXXXXX"); //mobile no. for SMS alert
+  Serial1.println('"');
+  delay(500);
+  serialPrint();
+  Serial1.print("Latitude:");
+  Serial1.println(latitude);
+  delay(500);
+  serialPrint();
+  Serial1.print(" longitude:");
+  Serial1.println(logitude);
+  delay(500);
+  serialPrint();
+  Serial1.print(" Speed:");
+  Serial1.print(Speed);
+  Serial1.println("Knots");
+  delay(500);
+  serialPrint();
+  Serial1.print("http://maps.google.com/maps?&z=15&mrt=yp&t=k&q=");
+  Serial1.print(latitude,6);
+  Serial1.print("+"); //28.612953, 77.231545 //28.612953,77.2293563
+  Serial1.print(logitude,6);
+  Serial1.write(26);
+  delay(2000);
+  serialPrint();
+}
+void serialPrint()
+{
+  while(Serial1.available()>0)
+  {
+    Serial.print(Serial1.read());
   }
 }
